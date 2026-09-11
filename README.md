@@ -15,6 +15,7 @@ DeepSeek Harness 常用插件问题的一键自愈插件(web profile 本地插�
 | 启动脚本沙箱环境注入 | run-dsh-web.sh 注入 `ELECTRON_DISABLE_SANDBOX`(root 下共享浏览器必需) | ✅ 开 |
 | 侧边栏底部按钮各占一行 | 让 `sidebar.footer.action` 槽内各插件按钮独占一行、不再并排(**自 dsh-guard-restart v0.7.0 迁移而来**) | ⬜ 关 |
 | 显示环境(Xvfb)自动配置 | 注入 `DISPLAY` 到启动脚本并生成/启用 `xvfb-dsh.service`(共享浏览器自托管窗口需要 X 显示) | ⬜ 关 |
+| 插件菜单样式自动适配 | 为设置-插件里**未自带样式**的插件卡片(如 `@perrylink/dsh-github` 的 `ghc-card`)自动补标准边框/底色/圆角(纯前端 CSS,不修改任何插件文件) | ⬜ 关 |
 
 > ⚠️ 取消勾选只停止**后续**运行,不会还原此前已做的文件修改(例如已打上的
 > 白名单补丁、已注入的环境变量会保留)。
@@ -74,6 +75,20 @@ dsh-auto-memory 按钮)原本并排显示;本项开启后容器改为 `flex-wrap
   (`restartNeeded`)。
 - 相关配置(可选,默认值见下):`display.value`(display 号)、`display.unit`、`display.screen`。
 
+### 6. 插件菜单样式自动适配(v0.4.0 新增,默认关闭)
+
+`settings.plugin.item` 卡片的外观完全由各插件自带 CSS 提供(平台不兜底,见
+STYLE-DIFF-REPORT.md)。部分插件(如 `@perrylink/dsh-github` 的 `ghc-card`)渲染了
+卡片结构但**完全没带样式**,表现为无边框/无底色/直角。勾选本项后(纯前端):
+
+- 以本插件卡片所在容器(`settings.plugin.item` 槽的 `ul`)为锚点,遍历其中的卡片;
+- **computed 无边框(或透明底/无圆角)即判定为「未适配」**,给该 `li` 加上
+  `.efx-adapt-card`(标准卡片外观:边框/底色/圆角/内边距/按钮与输入框基础样式,
+  配方同 `gdb-card`);
+- 已自带样式的卡片(有边框,如 `gdb-card`/`dgs-card`/`efx-card`/宿主卡片)不会被误伤;
+- **不修改任何插件文件**;勾选即生效、取消即移除(实时,无需重启)。
+- 异常处理:适配器任何异常都不影响页面(逐卡 try/catch);无法定位容器时静默跳过。
+
 ## 设置 → 插件:常用插件自愈菜单
 
 宿主在启动时注册 `settings` namespace `dsh-eco-fixes`,因此在
@@ -128,7 +143,8 @@ systemctl restart dsh-web.service
     "electronAutoInstall": true,
     "runScriptSandboxEnv": true,
     "sidebarFooterStack": false,
-    "displayEnv": false
+    "displayEnv": false,
+    "pluginMenuStyleAdapter": false
   }
 }
 ```

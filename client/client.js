@@ -39,6 +39,9 @@ const zh = {
   footerStackDesc: '设置行各插件按钮独占一行、不再并排(自 dsh-guard-restart 迁移,默认关闭)',
   displayEnv: '显示环境(Xvfb)自动配置',
   displayEnvDesc: '注入 DISPLAY 到启动脚本并生成/启用 Xvfb systemd 单元;共享浏览器自托管窗口需要 X 显示(默认关闭)',
+  menuStyleAdapter: '插件菜单样式自动适配',
+  menuStyleAdapterDesc: '为设置-插件里未自带样式的插件卡片自动补上标准边框/底色/圆角(纯前端,配方参考 STYLE-DIFF-REPORT.md 的 gdb-card,不修改任何插件文件)',
+  adaptedCount: (n) => '已适配 ' + n + ' 张无样式卡片',
   displayStatus: '显示环境',
   displayNotEnough: '未就绪',
   displayReady: '就绪',
@@ -83,6 +86,9 @@ const en = {
   displayNeedRestart: 'Restart to apply',
   displayNoXvfb: 'Xvfb not installed',
   displayUnitOff: 'Unit inactive',
+  menuStyleAdapter: 'Plugin menu style adapter',
+  menuStyleAdapterDesc: 'Automatically adds standard border/background/radius to unstyled plugin cards in Settings → Plugins (CSS-only, based on the gdb-card recipe in STYLE-DIFF-REPORT.md; no plugin files are modified)',
+  adaptedCount: (n) => n + ' unstyled card(s) adapted',
   on: 'On',
   off: 'Off',
   ready: 'Ready',
@@ -127,6 +133,14 @@ const CSS = `
 .efx-btn:disabled{opacity:.6;cursor:default}
 .efx-hint{font-size:12px;line-height:1.7;color:var(--dsw-alias-label-secondary,#6b7280);margin:0}
 .efx-mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+/* 插件菜单样式自动适配:给未自带样式的 settings.plugin.item 卡片补标准卡片外观
+   (配方同 dsh-fuhuobi .gdb-card / STYLE-DIFF-REPORT.md)。 */
+.efx-adapt-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;overflow:hidden;transition:border-color .16s,background .16s}
+.efx-adapt-card:hover{border-color:var(--dsw-alias-label-dimmed)}
+.efx-adapt-card>*{padding:12px 14px;margin:0;box-sizing:border-box}
+.efx-adapt-card>*+*{border-top:1px solid var(--dsw-alias-border-l1)}
+.efx-adapt-card button{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:none;border:0;display:flex;align-items:center;gap:10px}
+.efx-adapt-card input,.efx-adapt-card select,.efx-adapt-card textarea{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 8px;box-sizing:border-box;max-width:100%}
 `
 
 function injectStyles() {
@@ -162,6 +176,112 @@ function FooterAnchor({ scope }) {
     return () => { alive = false; if (unsub) unsub() }
   }, [scope])
   return h('span', { ref, style: { display: 'none' } })
+}
+
+// ---------------------------------------------------------------------------
+// 插件菜单样式自动适配:给「未自带样式」的 settings.plugin.item 卡片补标准
+// 卡片外观(边框/底色/圆角,配方同 gdb-card)。纯 CSS class 注入,不修改任何
+// 插件文件;严格幂等、可随时开关。
+//
+// 检测:以本插件的卡片容器(settings.plugin.item 槽的 ul)为锚点,遍历其 li
+// 子元素;computed 无边框(或透明底)即视为「未适配样式」→ 加 .efx-adapt-card。
+// 已自带样式的卡片(如 gdb-card/dgs-card/efx-card)天然带边框,不会被误伤。
+// ---------------------------------------------------------------------------
+const ADAPT_CLASS = 'efx-adapt-card'
+
+function isUnstyledCard(el) {
+  try {
+    if (!(el instanceof Element) || el.classList.contains(ADAPT_CLASS)) return false
+    if (el.closest('.efx-card') !== null) return false
+    const cs = getComputedStyle(el)
+    if (cs.display === 'none') return false
+    const bw = parseFloat(cs.borderTopWidth) || 0
+    if (bw > 0) return false // 有边框 = 已自带样式,不碰
+    const bg = (cs.backgroundColor || '').trim()
+    const transparent = bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)' || bg === ''
+    const radius = parseFloat(cs.borderTopLeftRadius) || 0
+    return transparent || radius === 0
+  } catch { return false }
+}
+
+function findCardsContainer() {
+  // 本插件卡片在同一个 settings.plugin.item 槽里,其父元素就是卡片列表 ul
+  const mine = document.querySelector('.efx-card')
+  if (mine && mine.parentElement) return mine.parentElement
+  return null
+}
+
+/**
+ * 启动/停止「插件菜单样式自动适配」supervisor(跟随 settingsScope 勾选实时开关)。
+ * @param {*} scope settingsScope.bind({namespace}) 的控制器
+ * @returns 清理函数(取消 observer/订阅并移除已加 class)
+ */
+function startPluginMenuStyleAdapter(scope) {
+  let disposed = false
+  let enabled = false
+  let debounce = null
+  let heartbeat = null
+  let observer = null
+
+  const applyAll = () => {
+    if (disposed || !enabled) return
+    try {
+      const container = findCardsContainer()
+      if (!container) return
+      let added = 0
+      for (const li of container.querySelectorAll(':scope > li')) {
+        if (!isUnstyledCard(li)) continue
+        if (!li.classList.contains(ADAPT_CLASS)) {
+          li.classList.add(ADAPT_CLASS)
+          added++
+        }
+      }
+      if (added > 0) console.log('[dsh-eco-fixes] 插件菜单样式适配:为 ' + added + ' 张无样式卡片补充标准外观')
+    } catch { /* 绝不影响页面 */ }
+  }
+
+  const removeAll = () => {
+    try {
+      for (const el of document.querySelectorAll('.' + ADAPT_CLASS)) {
+        el.classList.remove(ADAPT_CLASS)
+      }
+    } catch { /* ignore */ }
+  }
+
+  const sync = () => {
+    if (disposed) return
+    try {
+      const snap = scope && scope.getSnapshot ? scope.getSnapshot() : null
+      const v = snap && snap.value && typeof snap.value.pluginMenuStyleAdapter === 'boolean' ? snap.value.pluginMenuStyleAdapter : false
+      if (v === enabled) { if (enabled) applyAll(); return }
+      enabled = v
+      if (enabled) applyAll()
+      else removeAll()
+    } catch { /* keep current */ }
+  }
+
+  const kick = () => {
+    if (disposed || !enabled) return
+    if (debounce) clearTimeout(debounce)
+    debounce = setTimeout(() => { debounce = null; applyAll() }, 150)
+  }
+
+  sync()
+  const unsub = scope && scope.subscribe ? scope.subscribe(sync) : null
+  try {
+    observer = new MutationObserver(kick)
+    observer.observe(document.body, { childList: true, subtree: true })
+  } catch {}
+  heartbeat = setInterval(sync, 3000)
+
+  return () => {
+    disposed = true
+    if (debounce) clearTimeout(debounce)
+    if (heartbeat) clearInterval(heartbeat)
+    if (observer) { try { observer.disconnect() } catch {} }
+    if (unsub) unsub()
+    removeAll()
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +377,7 @@ function EfxCard({ scope, t }) {
     + (dp.socketOk ? ' · socket ok' : ' · socket ✗')
     + ((dp.unitPresent === false) ? ' · unit ✗' : (dp.unitActive ? ' · unit active' : (dp.unitPresent ? ' · unit inactive' : '')))
 
-  const anyEnabled = feats.autoMemoryPatch || feats.electronAutoInstall || feats.runScriptSandboxEnv || feats.sidebarFooterStack || feats.displayEnv
+  const anyEnabled = feats.autoMemoryPatch || feats.electronAutoInstall || feats.runScriptSandboxEnv || feats.sidebarFooterStack || feats.displayEnv || feats.pluginMenuStyleAdapter
   const summary = status === null
     ? (failed ? t('cardFailed') : t('cardLoading'))
     : (Object.keys(serverFeats).length ? Object.keys(serverFeats).filter((k) => serverFeats[k]).length + ' 项已启用' : t('cardDesc'))
@@ -268,6 +388,7 @@ function EfxCard({ scope, t }) {
     { key: 'runScriptSandboxEnv', label: t('runScript'), sub: t('runScriptDesc') },
     { key: 'sidebarFooterStack', label: t('footerStack'), sub: t('footerStackDesc') },
     { key: 'displayEnv', label: t('displayEnv'), sub: t('displayEnvDesc') },
+    { key: 'pluginMenuStyleAdapter', label: t('menuStyleAdapter'), sub: t('menuStyleAdapterDesc') },
   ]
 
   return h('li', { className: 'efx-card' + (open ? '' : '') },
@@ -386,6 +507,11 @@ exports.apply = function apply(ctx) {
       })
     } catch { /* no settings card */ }
   }
+
+  // 插件菜单样式自动适配:为未自带样式的设置-插件卡片补标准外观(跟随勾选开关)。
+  try {
+    ctx.effect(startPluginMenuStyleAdapter(scope), 'dsh-eco-fixes: menu style adapter')
+  } catch { /* settings unavailable: adapter off */ }
 }
 
 return module.exports
