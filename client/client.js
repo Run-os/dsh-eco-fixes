@@ -31,16 +31,15 @@ const zh = {
   statusTitle: '当前状态',
   autoMemory: '自动记忆白名单补丁',
   autoMemoryDesc: '修复 dsh-auto-memory 经域名访问 403「forbidden: loopback-only」,插件升级后自动重打',
-  electronInstall: '浏览器 Electron 自动安装',
-  electronInstallDesc: '检测到 dsh-builtin-browser 缺 electron 二进制时,后台执行 npx install-electron',
-  runScript: '启动脚本沙箱环境注入',
-  runScriptDesc: '在 run-dsh-web.sh 注入 ELECTRON_DISABLE_SANDBOX,root 下共享浏览器必需',
+  browserAdapt: 'dsh-builtin-browser 自动适配',
+  browserAdaptDesc: '一键适配共享浏览器,包含三件事:① electron 二进制缺失时后台执行 npx install-electron;② 在 run-dsh-web.sh 注入 ELECTRON_DISABLE_SANDBOX(root 下共享浏览器必需);③ 显示环境:注入 DISPLAY 到启动脚本并生成/启用 Xvfb systemd 单元(共享浏览器自托管窗口需要 X)。具体状态见下方「当前状态」的 electron / 启动脚本 / 显示环境三行。',
+  electronInstall: '浏览器 Electron',
+  runScript: '启动脚本沙箱环境',
   footerStack: '侧边栏底部按钮各占一行',
   footerStackDesc: '设置行各插件按钮独占一行、不再并排(自 dsh-guard-restart 迁移,默认关闭)',
-  displayEnv: '显示环境(Xvfb)自动配置',
-  displayEnvDesc: '注入 DISPLAY 到启动脚本并生成/启用 Xvfb systemd 单元;共享浏览器自托管窗口需要 X 显示(默认关闭)',
   menuStyleAdapter: '插件菜单样式自动适配',
   menuStyleAdapterDesc: '为设置-插件里未自带样式的插件卡片自动补上标准边框/底色/圆角(纯前端,配方参考 STYLE-DIFF-REPORT.md 的 gdb-card,不修改任何插件文件)',
+  detail: '详细',
   adaptedCount: (n) => '已适配 ' + n + ' 张无样式卡片',
   displayStatus: '显示环境',
   displayNotEnough: '未就绪',
@@ -57,7 +56,7 @@ const zh = {
   binaryMissing: '二进制缺失',
   pkgMissing: 'electron 包未安装',
   skippedLabel: '未勾选',
-  hint: '说明:只有勾选的方法会在启动时与「立即执行」时运行;取消勾选只停止后续运行,不会还原此前已做的修改。menu 勾选与配置文件 ~/.dsh/dsh-eco-fixes.json 的 features 双向同步。',
+  hint: '说明:只有勾选的方法会在启动时与「立即执行」时运行;取消勾选只停止后续运行,不会还原此前已做的修改。menu 勾选与配置文件 ~/.dsh/dsh-eco-fixes.json 的 features 双向同步(鼠标移到「详细」可查看每项说明)。',
 }
 
 const en = {
@@ -72,22 +71,21 @@ const en = {
   statusTitle: 'Status',
   autoMemory: 'Auto-memory whitelist patch',
   autoMemoryDesc: 'Fixes dsh-auto-memory 403 loopback-only behind a domain; re-applied after plugin updates',
-  electronInstall: 'Browser Electron auto-install',
-  electronInstallDesc: 'Runs npx install-electron in background when dsh-builtin-browser lacks the binary',
-  runScript: 'Run script sandbox env',
-  runScriptDesc: 'Injects ELECTRON_DISABLE_SANDBOX into run-dsh-web.sh (required for the shared browser as root)',
+  browserAdapt: 'dsh-builtin-browser auto-adapt',
+  browserAdaptDesc: 'One toggle for the shared browser: ① auto-runs npx install-electron in the background when the electron binary is missing; ② injects ELECTRON_DISABLE_SANDBOX into run-dsh-web.sh (required as root); ③ provisions a DISPLAY export + an Xvfb systemd unit (self-hosted browser window needs X). See electron / run-script / display rows under Status for detail.',
+  electronInstall: 'Electron binary',
+  runScript: 'Run-script sandbox env',
   footerStack: 'Sidebar footer buttons one per row',
   footerStackDesc: 'Each sidebar footer plugin button gets its own row (migrated from dsh-guard-restart, off by default)',
-  displayEnv: 'Display environment (Xvfb)',
-  displayEnvDesc: 'Injects DISPLAY into the run script and provisions/enables an Xvfb systemd unit; the self-hosted browser window needs X (off by default)',
+  menuStyleAdapter: 'Plugin menu style adapter',
+  menuStyleAdapterDesc: 'Automatically adds standard border/background/radius to unstyled plugin cards in Settings → Plugins (CSS-only, based on the gdb-card recipe in STYLE-DIFF-REPORT.md; no plugin files are modified)',
   displayStatus: 'Display env',
   displayNotEnough: 'Not ready',
   displayReady: 'Ready',
   displayNeedRestart: 'Restart to apply',
   displayNoXvfb: 'Xvfb not installed',
   displayUnitOff: 'Unit inactive',
-  menuStyleAdapter: 'Plugin menu style adapter',
-  menuStyleAdapterDesc: 'Automatically adds standard border/background/radius to unstyled plugin cards in Settings → Plugins (CSS-only, based on the gdb-card recipe in STYLE-DIFF-REPORT.md; no plugin files are modified)',
+  detail: 'Details',
   adaptedCount: (n) => n + ' unstyled card(s) adapted',
   on: 'On',
   off: 'Off',
@@ -98,14 +96,16 @@ const en = {
   binaryMissing: 'Binary missing',
   pkgMissing: 'electron package missing',
   skippedLabel: 'Not checked',
-  hint: 'Only checked fixes run at startup and on "Run checked fixes now"; unchecking stops future runs but does not revert previous changes. Menu toggles mirror ~/.dsh/dsh-eco-fixes.json features.',
+  hint: 'Only checked fixes run at startup and on "Run checked fixes now"; unchecking stops future runs but does not revert previous changes. Menu toggles mirror ~/.dsh/dsh-eco-fixes.json features (hover "Details" for each item).',
 }
 
 const CSS = `
 .efx-footer-stack{flex-wrap:wrap;row-gap:2px;overflow:visible}
 .efx-footer-stack>*{flex:0 0 100%;box-sizing:border-box}
-.efx-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;transition:border-color .16s,background .16s;overflow:hidden}
+.efx-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;transition:border-color .16s,background .16s;position:relative;overflow:visible}
 .efx-card:hover{border-color:var(--dsw-alias-label-dimmed)}
+/* 悬停「详细」时抬高卡片,避免提示层被后一张卡片盖住(后渲染者在上) */
+.efx-card:has(.efx-detail:hover),.efx-card:has(.efx-detail:focus-within){z-index:20}
 .efx-head{display:flex;width:100%;align-items:baseline;gap:12px;padding:12px 14px;background:none;border:none;cursor:pointer;font:inherit;text-align:left;color:inherit}
 .efx-title{font-size:14px;font-weight:700;flex:none}
 .efx-desc{flex:1;min-width:0;font-size:12px;color:var(--dsw-alias-label-secondary,#6b7280);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -116,6 +116,12 @@ const CSS = `
 .efx-check{flex:none;margin-top:3px;cursor:pointer;accent-color:var(--dsw-alias-brand-primary,#4f6ef7)}
 .efx-box{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .efx-name{color:var(--dsw-alias-label-primary,#1f2328);font-weight:600;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* 「详细」按钮:位于勾选项与勾选状态(徽章)之间;鼠标悬停/键盘聚焦显示描述 */
+.efx-detail{position:relative;display:inline-flex;flex:none}
+.efx-detail-btn{border:1px solid var(--dsw-alias-border-l2,#d0d5dd);background:var(--dsw-alias-bg-layer-2,#f8fafc);color:var(--dsw-alias-label-secondary,#6b7280);border-radius:999px;padding:0 9px;font:inherit;font-size:11px;line-height:18px;cursor:help;white-space:nowrap}
+.efx-detail-btn:hover{border-color:var(--dsw-alias-brand-primary,#4f6ef7);color:var(--dsw-alias-brand-primary,#4f6ef7)}
+.efx-tip{position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:max-content;max-width:min(440px,64vw);padding:8px 10px;border:1px solid var(--dsw-alias-border-l2,#d0d5dd);border-radius:8px;background:var(--dsw-alias-bg-layer-1,#ffffff);color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:1.7;font-weight:400;box-shadow:0 8px 24px rgba(15,23,42,.16);opacity:0;visibility:hidden;transition:opacity .12s visibility .12s;pointer-events:none}
+.efx-detail:hover .efx-tip,.efx-detail:focus-within .efx-tip{opacity:1;visibility:visible}
 .efx-sub{font-size:12px;color:var(--dsw-alias-label-tertiary,#6b7280);margin:0}
 .efx-badge{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-size:12px;line-height:18px;white-space:nowrap}
 .efx-on{background:rgba(22,163,74,.12);color:#16a34a}
@@ -423,17 +429,15 @@ function EfxCard({ scope, t }) {
     + (dp.socketOk ? ' · socket ok' : ' · socket ✗')
     + ((dp.unitPresent === false) ? ' · unit ✗' : (dp.unitActive ? ' · unit active' : (dp.unitPresent ? ' · unit inactive' : '')))
 
-  const anyEnabled = feats.autoMemoryPatch || feats.electronAutoInstall || feats.runScriptSandboxEnv || feats.sidebarFooterStack || feats.displayEnv || feats.pluginMenuStyleAdapter
+  const anyEnabled = feats.autoMemoryPatch || feats.dshBuiltinBrowserAdapt || feats.sidebarFooterStack || feats.pluginMenuStyleAdapter
   const summary = status === null
     ? (failed ? t('cardFailed') : t('cardLoading'))
     : (Object.keys(serverFeats).length ? Object.keys(serverFeats).filter((k) => serverFeats[k]).length + ' 项已启用' : t('cardDesc'))
 
   const rows = [
     { key: 'autoMemoryPatch', label: t('autoMemory'), sub: t('autoMemoryDesc') },
-    { key: 'electronAutoInstall', label: t('electronInstall'), sub: t('electronInstallDesc') },
-    { key: 'runScriptSandboxEnv', label: t('runScript'), sub: t('runScriptDesc') },
+    { key: 'dshBuiltinBrowserAdapt', label: t('browserAdapt'), sub: t('browserAdaptDesc') },
     { key: 'sidebarFooterStack', label: t('footerStack'), sub: t('footerStackDesc') },
-    { key: 'displayEnv', label: t('displayEnv'), sub: t('displayEnvDesc') },
     { key: 'pluginMenuStyleAdapter', label: t('menuStyleAdapter'), sub: t('menuStyleAdapterDesc') },
   ]
 
@@ -460,9 +464,13 @@ function EfxCard({ scope, t }) {
           h('div', { className: 'efx-box' },
             h('span', { className: 'efx-name' },
               h('span', null, row.label),
+              // 「详细」:介于勾选项与勾选状态(徽章)之间,悬停/聚焦显示描述
+              h('span', { className: 'efx-detail' },
+                h('button', { type: 'button', className: 'efx-detail-btn', 'aria-label': row.label + ' — ' + row.sub }, t('detail')),
+                h('span', { className: 'efx-tip', role: 'tooltip' }, row.sub),
+              ),
               enabledBadge(row.key),
             ),
-            h('p', { className: 'efx-sub' }, row.sub),
           ),
         )),
         anyEnabled ? null : h('p', { className: 'efx-sub' }, t('noneEnabled')),
