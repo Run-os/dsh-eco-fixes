@@ -14,6 +14,7 @@ DeepSeek Harness 常用插件问题的一键自愈插件(web profile 本地插�
 | 浏览器 Electron 自动安装 | dsh-builtin-browser 缺 electron 二进制时后台 `npx install-electron` | ✅ 开 |
 | 启动脚本沙箱环境注入 | run-dsh-web.sh 注入 `ELECTRON_DISABLE_SANDBOX`(root 下共享浏览器必需) | ✅ 开 |
 | 侧边栏底部按钮各占一行 | 让 `sidebar.footer.action` 槽内各插件按钮独占一行、不再并排(**自 dsh-guard-restart v0.7.0 迁移而来**) | ⬜ 关 |
+| 显示环境(Xvfb)自动配置 | 注入 `DISPLAY` 到启动脚本并生成/启用 `xvfb-dsh.service`(共享浏览器自托管窗口需要 X 显示) | ⬜ 关 |
 
 > ⚠️ 取消勾选只停止**后续**运行,不会还原此前已做的文件修改(例如已打上的
 > 白名单补丁、已注入的环境变量会保留)。
@@ -56,6 +57,22 @@ Electron 44+ 首次使用才下载二进制;缺失时 browser provider 报
 dsh-auto-memory 按钮)原本并排显示;本项开启后容器改为 `flex-wrap` + 每个子元素
 `flex:0 0 100%`,让每个按钮独占一行。**勾选即时生效、取消勾选即时恢复**(纯前端
 布局,不修改任何文件)。dsh-guard-restart v0.7.0 起已移除同名功能,避免重复实现。
+
+### 5. 显示环境(Xvfb)自动配置(v0.3.0 新增,默认关闭)
+
+共享浏览器的自托管 Electron 窗口需要 X 显示;`electronStatus` 只能证明二进制
+存在,**无法**证明「能开出窗口」——还需要 `DISPLAY` 环境变量与可达的 X server。
+勾选本项后,每次启动/手动执行时会**检测并修复**(幂等):
+
+- **检测**:Xvfb 可执行文件、X socket(`/tmp/.X11-unix/X<n>`)、当前进程 `DISPLAY`
+  是否指向目标 display、`xvfb-dsh.service` 是否存在/启用/运行、启动脚本是否已导出 `DISPLAY`。
+- **修复**:
+  1. 在 `run-dsh-web.sh` 幂等注入 `export DISPLAY=:99`(与沙箱变量同款机制);
+  2. 生成 `/etc/systemd/system/xvfb-dsh.service` 并 `systemctl enable --now`(仅在
+     Xvfb 已安装时;未安装只报告「请先 apt-get install -y xvfb」,不自动 apt)。
+- **生效**:运行中进程的环境无法热改,修复完成后状态会标出「需重启 dsh-web 生效」
+  (`restartNeeded`)。
+- 相关配置(可选,默认值见下):`display.value`(display 号)、`display.unit`、`display.screen`。
 
 ## 设置 → 插件:常用插件自愈菜单
 
@@ -105,20 +122,24 @@ systemctl restart dsh-web.service
   "trustedHosts": ["dsh.122050.xyz"],         // 自动记忆接口额外放行的 Host(可按需增删)
   "autoMemory": { "enabled": true },
   "browser": { "electron": { "autoInstall": true } },
+  "display": { "value": ":99", "unit": "xvfb-dsh.service", "screen": "1920x1080x24" }, // 显示环境参数(勾选 displayEnv 时使用)
   "features": {                               // 设置-插件菜单勾选(与菜单双向同步)
     "autoMemoryPatch": true,
     "electronAutoInstall": true,
     "runScriptSandboxEnv": true,
-    "sidebarFooterStack": false
+    "sidebarFooterStack": false,
+    "displayEnv": false
   }
 }
 ```
 
 环境变量覆盖:`DSH_ECO_PROFILE_ROOT`、`DSH_ECO_TRUSTED_HOSTS`(逗号分隔)、
-`DSH_ECO_ELECTRON_AUTO`(`0` 关闭自动安装)、`DSH_ECO_RUN_SCRIPT`。
+`DSH_ECO_ELECTRON_AUTO`(`0` 关闭自动安装)、`DSH_ECO_RUN_SCRIPT`、`DSH_ECO_DISPLAY`。
 
-> 说明:浏览器部分**只处理 electron 二进制**;不安装 Xvfb、不配置虚拟显示
-> (按部署方要求,浏览器窗口由宿主环境另行解决)。
+> 说明:浏览器部分默认**只处理 electron 二进制**;"显示环境(Xvfb)自动配置"为
+> 可选项(默认关闭),勾选后才负责注入 `DISPLAY` 与生成/启用 Xvfb 单元——
+> 是否符合部署要求由你决定。若用其他方式提供 X(如真显示器/外部 Xvfb),
+> 保持该项关闭即可(检测状态会如实展示)。
 
 ## 卸载
 

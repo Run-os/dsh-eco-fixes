@@ -1,7 +1,7 @@
 {
   "name": "dsh-eco-fixes",
-  "version": "0.2.0",
-  "description": "常用插件问题的一键自愈:自动记忆(dsh-auto-memory)403 loopback-only 白名单补丁自动重打+共享浏览器(dsh-builtin-browser)electron 二进制缺失自动安装+侧边栏底部按钮各占一行(自 dsh-guard-restart 迁移)。所有自愈方法均为可选项,在「设置 → 插件 → 插件配置」的「常用插件自愈」菜单里勾选,勾选了的才运行。Auto-fix for common plugin issues in DeepSeek Harness: re-applies the trusted-host whitelist patch to dsh-auto-memory after every update, auto-installs the missing Electron binary for dsh-builtin-browser, and provides a sidebar footer stack layout option. Every fix is optional and toggled by checkboxes in the Settings → Plugins menu.",
+  "version": "0.3.0",
+  "description": "常用插件问题的一键自愈:自动记忆(dsh-auto-memory)403 loopback-only 白名单补丁自动重打+共享浏览器(dsh-builtin-browser)electron 二进制缺失自动安装+显示环境(Xvfb)自动配置+侧边栏底部按钮各占一行(自 dsh-guard-restart 迁移)。所有自愈方法均为可选项,在「设置 → 插件 → 插件配置」的「常用插件自愈」菜单里勾选,勾选了的才运行。Auto-fix for common plugin issues in DeepSeek Harness: re-applies the trusted-host whitelist patch to dsh-auto-memory after every update, auto-installs the missing Electron binary for dsh-builtin-browser, optionally provisions an Xvfb display for the self-hosted browser window, and provides a sidebar footer stack layout option. Every fix is optional and toggled by checkboxes in the Settings → Plugins menu.",
   "type": "module",
   "main": "lib/index.js",
   "license": "MIT",

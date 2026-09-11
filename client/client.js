@@ -37,6 +37,14 @@ const zh = {
   runScriptDesc: '在 run-dsh-web.sh 注入 ELECTRON_DISABLE_SANDBOX,root 下共享浏览器必需',
   footerStack: '侧边栏底部按钮各占一行',
   footerStackDesc: '设置行各插件按钮独占一行、不再并排(自 dsh-guard-restart 迁移,默认关闭)',
+  displayEnv: '显示环境(Xvfb)自动配置',
+  displayEnvDesc: '注入 DISPLAY 到启动脚本并生成/启用 Xvfb systemd 单元;共享浏览器自托管窗口需要 X 显示(默认关闭)',
+  displayStatus: '显示环境',
+  displayNotEnough: '未就绪',
+  displayReady: '就绪',
+  displayNeedRestart: '需重启生效',
+  displayNoXvfb: 'Xvfb 未安装',
+  displayUnitOff: '单元未运行',
   on: '已启用',
   off: '已停用',
   ready: '已就位',
@@ -67,6 +75,14 @@ const en = {
   runScriptDesc: 'Injects ELECTRON_DISABLE_SANDBOX into run-dsh-web.sh (required for the shared browser as root)',
   footerStack: 'Sidebar footer buttons one per row',
   footerStackDesc: 'Each sidebar footer plugin button gets its own row (migrated from dsh-guard-restart, off by default)',
+  displayEnv: 'Display environment (Xvfb)',
+  displayEnvDesc: 'Injects DISPLAY into the run script and provisions/enables an Xvfb systemd unit; the self-hosted browser window needs X (off by default)',
+  displayStatus: 'Display env',
+  displayNotEnough: 'Not ready',
+  displayReady: 'Ready',
+  displayNeedRestart: 'Restart to apply',
+  displayNoXvfb: 'Xvfb not installed',
+  displayUnitOff: 'Unit inactive',
   on: 'On',
   off: 'Off',
   ready: 'Ready',
@@ -214,6 +230,7 @@ function EfxCard({ scope, t }) {
   const am = s.autoMemory || {}
   const el = s.electron || {}
   const rs = s.runScript || {}
+  const dp = s.display || {}
   const serverFeats = (s.features && typeof s.features === 'object') ? s.features : {}
 
   const badge = (cls, text) => h('span', { className: 'efx-badge ' + cls }, text)
@@ -231,8 +248,16 @@ function EfxCard({ scope, t }) {
     ? badge('efx-neutral', t('skippedLabel') + '·' + rs.skipped)
     : rs.ok ? badge(rs.changed ? 'efx-ok' : 'efx-ok', rs.changed ? t('repatched') : t('ready'))
       : badge('efx-bad', rs.reason || 'failed')
+  // 显示环境徽章:综合 ok 为「现在能开窗」(Xvfb+socket+DISPLAY 一致)
+  const dpBadge = !dp.xvfb
+    ? badge('efx-warn', t('displayNoXvfb'))
+    : dp.envMatches && dp.socketOk ? badge('efx-ok', t('displayReady') + ' ' + dp.display)
+      : badge('efx-warn', (dp.display || '') + ' ' + t('displayNeedRestart'))
+  const dpSub = (dp.envDisplay ? 'env=' + dp.envDisplay : 'env=∅')
+    + (dp.socketOk ? ' · socket ok' : ' · socket ✗')
+    + ((dp.unitPresent === false) ? ' · unit ✗' : (dp.unitActive ? ' · unit active' : (dp.unitPresent ? ' · unit inactive' : '')))
 
-  const anyEnabled = feats.autoMemoryPatch || feats.electronAutoInstall || feats.runScriptSandboxEnv || feats.sidebarFooterStack
+  const anyEnabled = feats.autoMemoryPatch || feats.electronAutoInstall || feats.runScriptSandboxEnv || feats.sidebarFooterStack || feats.displayEnv
   const summary = status === null
     ? (failed ? t('cardFailed') : t('cardLoading'))
     : (Object.keys(serverFeats).length ? Object.keys(serverFeats).filter((k) => serverFeats[k]).length + ' 项已启用' : t('cardDesc'))
@@ -242,6 +267,7 @@ function EfxCard({ scope, t }) {
     { key: 'electronAutoInstall', label: t('electronInstall'), sub: t('electronInstallDesc') },
     { key: 'runScriptSandboxEnv', label: t('runScript'), sub: t('runScriptDesc') },
     { key: 'sidebarFooterStack', label: t('footerStack'), sub: t('footerStackDesc') },
+    { key: 'displayEnv', label: t('displayEnv'), sub: t('displayEnvDesc') },
   ]
 
   return h('li', { className: 'efx-card' + (open ? '' : '') },
@@ -291,6 +317,11 @@ function EfxCard({ scope, t }) {
             h('span', { className: 'efx-slabel' }, t('runScript')),
             h('span', { className: 'efx-svalue' }, rsBadge,
               rs.file ? h('span', { className: 'efx-mono efx-sub' }, rs.file) : null),
+          ),
+          h('div', { className: 'efx-srow' },
+            h('span', { className: 'efx-slabel' }, t('displayStatus')),
+            h('span', { className: 'efx-svalue' }, dpBadge,
+              h('span', { className: 'efx-mono efx-sub' }, dpSub)),
           ),
           s.restartNeeded ? h('div', { className: 'efx-srow' },
             h('span', { className: 'efx-slabel' }, ' '),
