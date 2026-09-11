@@ -205,10 +205,17 @@ function isUnstyledCard(el) {
 }
 
 function findCardsContainer() {
-  // 本插件卡片在同一个 settings.plugin.item 槽里,其父元素就是卡片列表 ul
+  // 每张 settings.plugin.item 卡片都被包在各自的 wrapper div 里,公共容器是
+  // 最近的 UL(实测 class 如 "pbvGtq_cards",内含全部卡片 wrapper)。
   const mine = document.querySelector('.efx-card')
-  if (mine && mine.parentElement) return mine.parentElement
-  return null
+  if (!mine) return null
+  let el = mine.parentElement
+  while (el) {
+    if (el.tagName === 'UL' && el.querySelectorAll('li').length > 0) return el
+    if (el.querySelectorAll(':scope > div > li, :scope > li').length >= 3) return el
+    el = el.parentElement
+  }
+  return mine.parentElement
 }
 
 /**
@@ -229,7 +236,8 @@ function startPluginMenuStyleAdapter(scope) {
       const container = findCardsContainer()
       if (!container) return
       let added = 0
-      for (const li of container.querySelectorAll(':scope > li')) {
+      // 卡片是 <ul> > <div(wrapper)> > <li>,取全部后代 li 逐个判定
+      for (const li of container.querySelectorAll('li')) {
         if (!isUnstyledCard(li)) continue
         if (!li.classList.contains(ADAPT_CLASS)) {
           li.classList.add(ADAPT_CLASS)
@@ -509,8 +517,10 @@ exports.apply = function apply(ctx) {
   }
 
   // 插件菜单样式自动适配:为未自带样式的设置-插件卡片补标准外观(跟随勾选开关)。
+  // 注意:ctx.effect 期望「返回 disposer 的函数」,不能直接传执行结果,
+  // 否则会在启动瞬间把 adapter 立刻回收,导致永远不生效(v0.4.0 故障,已修)。
   try {
-    ctx.effect(startPluginMenuStyleAdapter(scope), 'dsh-eco-fixes: menu style adapter')
+    ctx.effect(() => startPluginMenuStyleAdapter(scope), 'dsh-eco-fixes: menu style adapter')
   } catch { /* settings unavailable: adapter off */ }
 }
 
