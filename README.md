@@ -83,8 +83,15 @@ STYLE-DIFF-REPORT.md)。部分插件(如 `@perrylink/dsh-github` 的 `ghc-card`)
 
 - 以本插件卡片所在容器(`settings.plugin.item` 槽的 `ul`)为锚点,遍历其中的卡片;
 - **computed 无边框(或透明底/无圆角)即判定为「未适配」**,给该 `li` 加上
-  `.efx-adapt-card`(标准卡片外观:边框/底色/圆角/内边距/按钮与输入框基础样式,
-  配方同 `gdb-card`);
+  `.efx-adapt-card` 与 `data-efx-adapted="1"`(标准卡片外观:边框/底色/圆角/
+  内边距/按钮与输入框基础样式,配方同 `gdb-card`);
+
+> 为什么加 `data-efx-adapted` 属性(v0.4.2):`settings.plugin.item` 卡片由 React
+> 渲染,**任何重渲染(展开/收起等)都会重写 `className`、把注入的 class 抹掉**,旧版
+> 因此出现「边框/底色闪一下恢复原样再补上」的视觉回跳。属性是 `setAttribute` 写的,
+> React 不管理它,重渲染后依然存在 —— 样式同时键在 `[data-efx-adapted="1"]`
+> 属性选择器上,重渲染瞬间样式**不中断**;class 由 MutationObserver 在下一帧
+> (rAF 合并,不再用 150ms 防抖)同步补回,作为可读标记。
 - 已自带样式的卡片(有边框,如 `gdb-card`/`dgs-card`/`efx-card`/宿主卡片)不会被误伤;
 - **不修改任何插件文件**;勾选即生效、取消即移除(实时,无需重启)。
 - 异常处理:适配器任何异常都不影响页面(逐卡 try/catch);无法定位容器时静默跳过。

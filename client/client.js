@@ -135,12 +135,15 @@ const CSS = `
 .efx-mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 /* 插件菜单样式自动适配:给未自带样式的 settings.plugin.item 卡片补标准卡片外观
    (配方同 dsh-fuhuobi .gdb-card / STYLE-DIFF-REPORT.md)。 */
-.efx-adapt-card{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;overflow:hidden;transition:border-color .16s,background .16s}
-.efx-adapt-card:hover{border-color:var(--dsw-alias-label-dimmed)}
-.efx-adapt-card>*{padding:12px 14px;margin:0;box-sizing:border-box}
-.efx-adapt-card>*+*{border-top:1px solid var(--dsw-alias-border-l1)}
-.efx-adapt-card button{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:none;border:0;display:flex;align-items:center;gap:10px}
-.efx-adapt-card input,.efx-adapt-card select,.efx-adapt-card textarea{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 8px;box-sizing:border-box;max-width:100%}
+/* 关键:样式同时挂在 class 和 data-efx-adapted 属性上。React 重渲染时会重写
+   className(把注入的 class 抹掉),但不会碰我们 setAttribute 写的属性,所以
+   属性选择器能保证边框/底色在重渲染瞬间不丢失(消除「闪一下恢复原样」)。 */
+.efx-adapt-card,[data-efx-adapted="1"]{list-style:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;overflow:hidden;transition:border-color .16s,background .16s}
+.efx-adapt-card:hover,[data-efx-adapted="1"]:hover{border-color:var(--dsw-alias-label-dimmed)}
+.efx-adapt-card>*,[data-efx-adapted="1"]>*{padding:12px 14px;margin:0;box-sizing:border-box}
+.efx-adapt-card>*+*,[data-efx-adapted="1"]>*+*{border-top:1px solid var(--dsw-alias-border-l1)}
+.efx-adapt-card button,[data-efx-adapted="1"] button{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:none;border:0;display:flex;align-items:center;gap:10px}
+.efx-adapt-card input,.efx-adapt-card select,.efx-adapt-card textarea,[data-efx-adapted="1"] input,[data-efx-adapted="1"] select,[data-efx-adapted="1"] textarea{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 8px;box-sizing:border-box;max-width:100%}
 `
 
 function injectStyles() {
@@ -188,10 +191,23 @@ function FooterAnchor({ scope }) {
 // 已自带样式的卡片(如 gdb-card/dgs-card/efx-card)天然带边框,不会被误伤。
 // ---------------------------------------------------------------------------
 const ADAPT_CLASS = 'efx-adapt-card'
+// 双保险:class 会被 React 重渲染抹掉,属性不会 —— 样式键在属性上,class 只作可读标记。
+const ADAPT_ATTR = 'data-efx-adapted'
+
+function markCard(el) {
+  if (!el.hasAttribute(ADAPT_ATTR)) el.setAttribute(ADAPT_ATTR, '1')
+  if (!el.classList.contains(ADAPT_CLASS)) el.classList.add(ADAPT_CLASS)
+}
+
+function unmarkCard(el) {
+  if (el.hasAttribute(ADAPT_ATTR)) el.removeAttribute(ADAPT_ATTR)
+  if (el.classList.contains(ADAPT_CLASS)) el.classList.remove(ADAPT_CLASS)
+}
 
 function isUnstyledCard(el) {
   try {
-    if (!(el instanceof Element) || el.classList.contains(ADAPT_CLASS)) return false
+    if (!(el instanceof Element)) return false
+    if (el.classList.contains(ADAPT_CLASS) || el.hasAttribute(ADAPT_ATTR)) return false
     if (el.closest('.efx-card') !== null) return false
     const cs = getComputedStyle(el)
     if (cs.display === 'none') return false
@@ -226,7 +242,7 @@ function findCardsContainer() {
 function startPluginMenuStyleAdapter(scope) {
   let disposed = false
   let enabled = false
-  let debounce = null
+  let frame = null
   let heartbeat = null
   let observer = null
 
@@ -239,19 +255,28 @@ function startPluginMenuStyleAdapter(scope) {
       // 卡片是 <ul> > <div(wrapper)> > <li>,取全部后代 li 逐个判定
       for (const li of container.querySelectorAll('li')) {
         if (!isUnstyledCard(li)) continue
-        if (!li.classList.contains(ADAPT_CLASS)) {
-          li.classList.add(ADAPT_CLASS)
-          added++
-        }
+        markCard(li)
+        added++
       }
       if (added > 0) console.log('[dsh-eco-fixes] 插件菜单样式适配:为 ' + added + ' 张无样式卡片补充标准外观')
     } catch { /* 绝不影响页面 */ }
   }
 
+  // 用 rAF 合并,而不是 setTimeout 防抖:最新一帧就补齐,肉眼看不到「先恢复原样」。
+  const scheduleApply = () => {
+    if (disposed || !enabled || frame !== null) return
+    try {
+      frame = requestAnimationFrame(() => { frame = null; applyAll() })
+    } catch {
+      frame = null
+      applyAll()
+    }
+  }
+
   const removeAll = () => {
     try {
-      for (const el of document.querySelectorAll('.' + ADAPT_CLASS)) {
-        el.classList.remove(ADAPT_CLASS)
+      for (const el of document.querySelectorAll('.' + ADAPT_CLASS + ',[' + ADAPT_ATTR + ']')) {
+        unmarkCard(el)
       }
     } catch { /* ignore */ }
   }
@@ -268,23 +293,36 @@ function startPluginMenuStyleAdapter(scope) {
     } catch { /* keep current */ }
   }
 
-  const kick = () => {
+  // React 重渲染会重写 className,把注入的 class 抹掉。属性选择器保证样式不断,
+  // 这里再把 class 同步补齐(class 变了会再触发一次 attribute 回调,但那时已有
+  // class,直接返回,不会自激)。
+  const onMutations = (records) => {
     if (disposed || !enabled) return
-    if (debounce) clearTimeout(debounce)
-    debounce = setTimeout(() => { debounce = null; applyAll() }, 150)
+    let needApply = false
+    for (const rec of records) {
+      if (rec.type === 'attributes') {
+        const el = rec.target
+        if (el instanceof Element && el.hasAttribute(ADAPT_ATTR) && !el.classList.contains(ADAPT_CLASS)) {
+          try { el.classList.add(ADAPT_CLASS) } catch {}
+        }
+      } else {
+        needApply = true
+      }
+    }
+    if (needApply) scheduleApply()
   }
 
   sync()
   const unsub = scope && scope.subscribe ? scope.subscribe(sync) : null
   try {
-    observer = new MutationObserver(kick)
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer = new MutationObserver(onMutations)
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
   } catch {}
   heartbeat = setInterval(sync, 3000)
 
   return () => {
     disposed = true
-    if (debounce) clearTimeout(debounce)
+    if (frame !== null) { try { cancelAnimationFrame(frame) } catch {} frame = null }
     if (heartbeat) clearInterval(heartbeat)
     if (observer) { try { observer.disconnect() } catch {} }
     if (unsub) unsub()
