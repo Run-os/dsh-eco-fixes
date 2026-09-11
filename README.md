@@ -1,21 +1,20 @@
 # dsh-eco-fixes
 
-DeepSeek Harness 常用插件问题的一键自愈插件(web profile 本地插件)。
+DeepSeek Harness 常用插件问题修复扩展(web profile 本地插件)。
 
-安装后**每次启动自动体检修复**;插件(或其修复对象)更新后也会自动重打。
-所有自愈方法都是**可选项**:在 **设置 → 插件 → 插件配置** 的
-**「常用插件自愈(dsh-eco-fixes)」菜单**里勾选,**勾选了的才运行**。
+所有功能**默认全部关闭**、不自动运行:需要时在 **设置 → 插件 → 插件配置** 的
+**「常用插件扩展(dsh-eco-fixes)」菜单**里勾选,**勾选了的才运行**。
 每个勾选项下方不展示长描述,鼠标悬停其 **`详细`** 按钮(位于勾选项与勾选状态
 之间)即显示说明。
 
-## 自愈方法(全为可选项,菜单内勾选;悬停「详细」看说明)
+## 功能项(全部默认关闭,菜单内勾选;悬停「详细」看说明)
 
 | 勾选项 | 作用 | 默认 |
 | --- | --- | --- |
-| 自动记忆白名单补丁 | 修复 dsh-auto-memory 403「forbidden: loopback-only」,插件升级后自动重打 | ✅ 开 |
-| dsh-builtin-browser 自动适配 | 共享浏览器一键适配:① electron 二进制缺失自动安装;② run-dsh-web.sh 注入 `ELECTRON_DISABLE_SANDBOX`;③ 显示环境(Xvfb 单元 + 注入 `DISPLAY`)。v0.5.0 起三合一 | ✅ 开 |
-| 侧边栏底部按钮各占一行 | 让 `sidebar.footer.action` 槽内各插件按钮独占一行、不再并排(**自 dsh-guard-restart v0.7.0 迁移而来**) | ⬜ 关 |
-| 插件菜单样式自动适配 | 为设置-插件里**未自带样式**的插件卡片(如 `@perrylink/dsh-github` 的 `ghc-card`)自动补标准边框/底色/圆角(纯前端 CSS,不修改任何插件文件) | ⬜ 关 |
+| dsh-auto-memory公网访问补丁 | 让 dsh-auto-memory 支持通过公网域名访问,不再返回 403;插件更新后自动重新生效 | ⬜ 关 |
+| dsh-builtin-browser 自动适配 | 自动补全共享浏览器运行所需的安装、沙箱与图形显示环境,共享浏览器窗口即可正常打开 | ⬜ 关 |
+| 左侧边栏底部按钮纵向排列 | 左侧边栏底部的各插件按钮纵向排列,不再并排挤在同一行 | ⬜ 关 |
+| 插件菜单样式自动适配 | 为「设置 → 插件」中未自带样式的插件卡片统一补上边框、底色与圆角,页面更整齐 | ⬜ 关 |
 
 > ⚠️ 取消勾选只停止**后续**运行,不会还原此前已做的文件修改(例如已打上的
 > 白名单补丁、已注入的环境变量会保留)。
@@ -67,12 +66,12 @@ DeepSeek Harness 常用插件问题的一键自愈插件(web profile 本地插�
 > 若用其他方式提供 X(如真显示器/外部 Xvfb),可在菜单里取消勾选本项,已注入的
 > 文件内容不会自动还原,但检测状态会如实展示。
 
-### 3. 侧边栏底部按钮各占一行(自 dsh-guard-restart 迁移)
+### 3. 左侧边栏底部按钮纵向排列
 
 `sidebar.footer.action` 槽容器内各插件按钮(如 dsh-cost-meter 徽章、
 dsh-auto-memory 按钮)原本并排显示;本项开启后容器改为 `flex-wrap` + 每个子元素
 `flex:0 0 100%`,让每个按钮独占一行。**勾选即时生效、取消勾选即时恢复**(纯前端
-布局,不修改任何文件)。dsh-guard-restart v0.7.0 起已移除同名功能,避免重复实现。
+布局,不修改任何文件)。
 
 ### 4. 插件菜单样式自动适配(v0.4.0 新增,默认关闭)
 
@@ -95,19 +94,19 @@ STYLE-DIFF-REPORT.md)。部分插件(如 `@perrylink/dsh-github` 的 `ghc-card`)
 - **不修改任何插件文件**;勾选即生效、取消即移除(实时,无需重启)。
 - 异常处理:适配器任何异常都不影响页面(逐卡 try/catch);无法定位容器时静默跳过。
 
-## 设置 → 插件:常用插件自愈菜单
+## 设置 → 插件:常用插件扩展菜单
 
 宿主在启动时注册 `settings` namespace `dsh-eco-fixes`,因此在
-**设置 → 插件 → 插件配置** 列表中出现「常用插件自愈」卡片:
+**设置 → 插件 → 插件配置** 列表中出现「常用插件扩展」卡片:
 
-- 4 个自愈方法各一行勾选框(勾选/取消即时生效,服务端按勾选门控运行);
+- 4 项功能各一行勾选框(**默认全部关闭**,勾选/取消即时生效,服务端按勾选门控运行);
 - 每行在勾选项与勾选状态(已启用/已停用徽章)之间有 **`详细`** 按钮,鼠标悬停
   (或键盘聚焦)弹出该项说明;说明气泡以按钮为中心水平居中、宽度自适应且上限
   `min(300px, 55vw)`(v0.5.1 收窄),因此不会越过设置面板左右边界;
-- 「当前状态」区显示各方法的体检结果(autoMemory / electron / runScript / 显示环境);
+- 「当前状态」区显示各功能的检查结果(autoMemory / electron / runScript / 显示环境);
 - 「立即执行已勾选项」按钮 = 等同 `POST /dsh-eco-fixes/apply`;
 - 勾选变更与配置文件 `~/.dsh/dsh-eco-fixes.json` 的 `features` **双向同步**
-  (不创建该文件则用默认勾选;菜单里改一次后文件自动生成)。
+  (不创建该文件则全部默认关闭;菜单里改一次后文件自动生成)。
 
 ## 安装
 
@@ -138,7 +137,7 @@ systemctl restart dsh-web.service
 
 ## 配置
 
-`~/.dsh/dsh-eco-fixes.json`(不创建则用默认值;菜单勾选变更会自动写入):
+`~/.dsh/dsh-eco-fixes.json`(不创建则全部默认关闭;菜单勾选变更会自动写入):
 
 ```jsonc
 {
@@ -147,9 +146,9 @@ systemctl restart dsh-web.service
   "autoMemory": { "enabled": true },
   "browser": { "electron": { "autoInstall": true, "disableSandboxEnv": true } },
   "display": { "value": ":99", "unit": "xvfb-dsh.service", "screen": "1920x1080x24" },
-  "features": {                               // 设置-插件菜单勾选(与菜单双向同步)
-    "autoMemoryPatch": true,
-    "dshBuiltinBrowserAdapt": true,           // v0.5.0 起合并 electron 安装/沙箱注入/显示环境
+  "features": {                               // 设置-插件菜单勾选(与菜单双向同步,默认全关)
+    "autoMemoryPatch": false,
+    "dshBuiltinBrowserAdapt": false,          // v0.5.0 起合并 electron 安装/沙箱注入/显示环境
     "sidebarFooterStack": false,
     "pluginMenuStyleAdapter": false
   }

@@ -1,5 +1,5 @@
 // dsh-eco-fixes client 半:
-//   - 在「设置 → 插件 → 插件配置」注册「常用插件自愈」菜单卡片:4 个自愈方法
+//   - 在「设置 → 插件 → 插件配置」注册「常用插件扩展」菜单卡片:4 项功能
 //     全部用勾选框控制,只有勾选的才运行(服务端按 features 门控);
 //   - 「侧边栏底部按钮各占一行」自 dsh-guard-restart 迁移至此:把
 //     sidebar.footer.action 槽容器改成每个子按钮独占一行(flex:0 0 100%),
@@ -20,25 +20,25 @@ const { useState, useEffect, useCallback, useMemo } = React
 const NS = 'dsh-eco-fixes'
 
 const zh = {
-  cardTitle: '常用插件自愈',
-  cardDesc: '勾选的自愈方法才会运行',
-  noneEnabled: '未勾选任何自愈方法(全部关闭)',
+  cardTitle: '常用插件扩展',
+  cardDesc: '勾选的功能才会运行',
+  noneEnabled: '未勾选任何功能(全部关闭)',
   cardLoading: '检测中…',
   cardFailed: '读取状态失败',
   cardRefresh: '刷新',
   apply: '立即执行已勾选项',
   applying: '执行中…',
   statusTitle: '当前状态',
-  autoMemory: '自动记忆白名单补丁',
-  autoMemoryDesc: '修复 dsh-auto-memory 经域名访问 403「forbidden: loopback-only」,插件升级后自动重打',
+  autoMemory: 'dsh-auto-memory公网访问补丁',
+  autoMemoryDesc: '让 dsh-auto-memory 支持通过公网域名访问,不再返回 403;插件更新后自动重新生效',
   browserAdapt: 'dsh-builtin-browser 自动适配',
-  browserAdaptDesc: '一键适配共享浏览器,包含三件事:① electron 二进制缺失时后台执行 npx install-electron;② 在 run-dsh-web.sh 注入 ELECTRON_DISABLE_SANDBOX(root 下共享浏览器必需);③ 显示环境:注入 DISPLAY 到启动脚本并生成/启用 Xvfb systemd 单元(共享浏览器自托管窗口需要 X)。具体状态见下方「当前状态」的 electron / 启动脚本 / 显示环境三行。',
+  browserAdaptDesc: '一键适配共享浏览器:自动补全浏览器运行所需的安装、沙箱与图形显示环境,共享浏览器窗口即可正常打开。具体状态见下方「当前状态」的 electron / 启动脚本 / 显示环境三行。',
   electronInstall: '浏览器 Electron',
   runScript: '启动脚本沙箱环境',
-  footerStack: '侧边栏底部按钮各占一行',
-  footerStackDesc: '设置行各插件按钮独占一行、不再并排(自 dsh-guard-restart 迁移,默认关闭)',
+  footerStack: '左侧边栏底部按钮纵向排列',
+  footerStackDesc: '左侧边栏底部的各插件按钮纵向排列,不再并排挤在同一行',
   menuStyleAdapter: '插件菜单样式自动适配',
-  menuStyleAdapterDesc: '为设置-插件里未自带样式的插件卡片自动补上标准边框/底色/圆角(纯前端,配方参考 STYLE-DIFF-REPORT.md 的 gdb-card,不修改任何插件文件)',
+  menuStyleAdapterDesc: '为「设置 → 插件」中未自带样式的插件卡片统一补上边框、底色与圆角,页面更整齐(不修改任何插件文件)',
   detail: '详细',
   adaptedCount: (n) => '已适配 ' + n + ' 张无样式卡片',
   displayStatus: '显示环境',
@@ -56,29 +56,29 @@ const zh = {
   binaryMissing: '二进制缺失',
   pkgMissing: 'electron 包未安装',
   skippedLabel: '未勾选',
-  hint: '说明:只有勾选的方法会在启动时与「立即执行」时运行;取消勾选只停止后续运行,不会还原此前已做的修改。menu 勾选与配置文件 ~/.dsh/dsh-eco-fixes.json 的 features 双向同步(鼠标移到「详细」可查看每项说明)。',
+  hint: '说明:只有勾选的功能会在启动时与「立即执行」时运行;取消勾选只停止后续运行,不会还原此前已做的修改。菜单勾选与配置文件 ~/.dsh/dsh-eco-fixes.json 的 features 双向同步(鼠标移到「详细」可查看每项说明)。',
 }
 
 const en = {
-  cardTitle: 'Common plugin auto-fixes',
-  cardDesc: 'Only checked fixes run',
-  noneEnabled: 'No fix enabled (all off)',
+  cardTitle: 'Common plugin extensions',
+  cardDesc: 'Only checked features run',
+  noneEnabled: 'No feature enabled (all off)',
   cardLoading: 'Checking…',
   cardFailed: 'Failed to read status',
   cardRefresh: 'Refresh',
-  apply: 'Run checked fixes now',
+  apply: 'Run checked features now',
   applying: 'Running…',
   statusTitle: 'Status',
-  autoMemory: 'Auto-memory whitelist patch',
-  autoMemoryDesc: 'Fixes dsh-auto-memory 403 loopback-only behind a domain; re-applied after plugin updates',
+  autoMemory: 'dsh-auto-memory public-access patch',
+  autoMemoryDesc: 'Lets dsh-auto-memory be reached through a public domain instead of returning 403; re-applies automatically after plugin updates',
   browserAdapt: 'dsh-builtin-browser auto-adapt',
-  browserAdaptDesc: 'One toggle for the shared browser: ① auto-runs npx install-electron in the background when the electron binary is missing; ② injects ELECTRON_DISABLE_SANDBOX into run-dsh-web.sh (required as root); ③ provisions a DISPLAY export + an Xvfb systemd unit (self-hosted browser window needs X). See electron / run-script / display rows under Status for detail.',
+  browserAdaptDesc: 'One-click shared-browser adaptation: auto-installs the missing runtime and configures the sandbox and display environment so the shared-browser window opens properly. See electron / run-script / display rows under Status for detail.',
   electronInstall: 'Electron binary',
   runScript: 'Run-script sandbox env',
-  footerStack: 'Sidebar footer buttons one per row',
-  footerStackDesc: 'Each sidebar footer plugin button gets its own row (migrated from dsh-guard-restart, off by default)',
+  footerStack: 'Left sidebar footer buttons stacked vertically',
+  footerStackDesc: 'Stacks the sidebar footer plugin buttons vertically instead of squeezing them onto one row',
   menuStyleAdapter: 'Plugin menu style adapter',
-  menuStyleAdapterDesc: 'Automatically adds standard border/background/radius to unstyled plugin cards in Settings → Plugins (CSS-only, based on the gdb-card recipe in STYLE-DIFF-REPORT.md; no plugin files are modified)',
+  menuStyleAdapterDesc: 'Adds standard border/background/radius to unstyled plugin cards in Settings → Plugins for a cleaner look (no plugin files are modified)',
   displayStatus: 'Display env',
   displayNotEnough: 'Not ready',
   displayReady: 'Ready',
@@ -96,7 +96,7 @@ const en = {
   binaryMissing: 'Binary missing',
   pkgMissing: 'electron package missing',
   skippedLabel: 'Not checked',
-  hint: 'Only checked fixes run at startup and on "Run checked fixes now"; unchecking stops future runs but does not revert previous changes. Menu toggles mirror ~/.dsh/dsh-eco-fixes.json features (hover "Details" for each item).',
+  hint: 'Only checked features run at startup and on "Run checked features now"; unchecking stops future runs but does not revert previous changes. Menu toggles mirror ~/.dsh/dsh-eco-fixes.json features (hover "Details" for each item).',
 }
 
 const CSS = `
@@ -337,7 +337,7 @@ function startPluginMenuStyleAdapter(scope) {
 }
 
 // ---------------------------------------------------------------------------
-// 设置 → 插件 → 插件配置:「常用插件自愈」菜单卡片
+// 设置 → 插件 → 插件配置:「常用插件扩展」菜单卡片
 // ---------------------------------------------------------------------------
 function EfxCard({ scope, t }) {
   const [open, setOpen] = useState(false)
@@ -546,7 +546,7 @@ exports.apply = function apply(ctx) {
     }, ({ wide }) => h(FooterAnchor, { scope })))
   } catch { /* slot unavailable: footer stack off, rest unaffected */ }
 
-  // 设置 → 插件 → 插件配置:「常用插件自愈」菜单(勾选每项自愈方法)
+  // 设置 → 插件 → 插件配置:「常用插件扩展」菜单(勾选每项功能)
   if (scope) {
     try {
       ctx.slots.inject('settings.plugin.item', function* () {
