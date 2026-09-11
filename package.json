@@ -1,6 +1,6 @@
 {
   "name": "dsh-eco-fixes",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "常用插件问题的一键自愈:自动记忆(dsh-auto-memory)403 loopback-only 白名单补丁自动重打+dsh-builtin-browser 自动适配(electron 二进制自动安装+启动脚本沙箱注入+显示环境 Xvfb,三合一)+插件菜单样式自动适配+侧边栏底部按钮各占一行(自 dsh-guard-restart 迁移)。所有自愈方法均为可选项,在「设置 → 插件 → 插件配置」的「常用插件自愈」菜单里勾选,勾选了的才运行;每项描述收纳在鼠标悬停的「详细」按钮里。Auto-fix for common plugin issues in DeepSeek Harness: re-applies the trusted-host whitelist patch to dsh-auto-memory after every update, auto-adapts dsh-builtin-browser (missing Electron binary install + sandbox env injection + Xvfb display env as one toggle), auto-styles unstyled plugin cards in Settings→Plugins, and provides a sidebar footer stack layout option. Every fix is optional, toggled by checkboxes in the Settings → Plugins menu, with per-item descriptions on a hover `Details` button.",
   "type": "module",
   "main": "lib/index.js",

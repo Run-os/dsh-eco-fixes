@@ -102,7 +102,8 @@ STYLE-DIFF-REPORT.md)。部分插件(如 `@perrylink/dsh-github` 的 `ghc-card`)
 
 - 4 个自愈方法各一行勾选框(勾选/取消即时生效,服务端按勾选门控运行);
 - 每行在勾选项与勾选状态(已启用/已停用徽章)之间有 **`详细`** 按钮,鼠标悬停
-  (或键盘聚焦)弹出该项说明;
+  (或键盘聚焦)弹出该项说明;说明气泡以按钮为中心水平居中、宽度自适应且上限
+  `min(300px, 55vw)`(v0.5.1 收窄),因此不会越过设置面板左右边界;
 - 「当前状态」区显示各方法的体检结果(autoMemory / electron / runScript / 显示环境);
 - 「立即执行已勾选项」按钮 = 等同 `POST /dsh-eco-fixes/apply`;
 - 勾选变更与配置文件 `~/.dsh/dsh-eco-fixes.json` 的 `features` **双向同步**
