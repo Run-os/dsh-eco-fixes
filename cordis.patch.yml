@@ -1,0 +1,7 @@
+# dsh-eco-fixes bundle patch: 常驻体检,自动修复 dsh-auto-memory 白名单 与
+# dsh-builtin-browser 的 electron 二进制缺失。
+# (本部署通过 package.json 的 dsh.profile.bundles 注册,此文件供其他 profile 以
+# cordis.patch.yml 方式挂载时使用。)
+- insert:
+    - id: eco-fixes
+      name: 'dsh-eco-fixes'
